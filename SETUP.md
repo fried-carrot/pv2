@@ -30,20 +30,22 @@ pip install scanpy anndata pandas numpy scipy scikit-learn
 pip install matplotlib seaborn tqdm
 ```
 
-## Step 3: Upload Data
+## Step 3: Download Data
 
-Upload your lupus dataset to the server:
+Download the lupus dataset from Google Drive:
 
 ```bash
 # Create data directory
 mkdir -p data
 
-# Upload h5ad file (use scp, rsync, or cloud storage)
-scp local/path/to/CLUESImmVar_nonorm.V6.h5ad user@server:~/pv2/data/
+# Install gdown if not already installed
+pip install gdown
 
-# Or download from cloud storage
-# gsutil cp gs://your-bucket/lupus.h5ad data/
-# aws s3 cp s3://your-bucket/lupus.h5ad data/
+# Download dataset (1.5GB, may take a few minutes)
+gdown --id 1znI4lccRallcAf7-0MLdF08TyAETHwLS -O data/CLUESImmVar_nonorm.V6.h5ad
+
+# Verify download
+ls -lh data/CLUESImmVar_nonorm.V6.h5ad
 ```
 
 ## Step 4: Data Preprocessing
