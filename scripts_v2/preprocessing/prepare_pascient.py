@@ -31,10 +31,9 @@ def prepare_pascient_data(
     test_size: float = 0.2,
     random_state: int = 42,
     min_cells_per_gene: int = 5,
-    normalize_target: float = 1e4,
 ):
     """
-    Prepare data for PaSCient.
+    Prepare data for PaSCient - barebones filtering and formatting only.
 
     Args:
         input_h5ad: Path to processed h5ad file
@@ -43,16 +42,14 @@ def prepare_pascient_data(
         test_size: Fraction for test split
         random_state: Random seed
         min_cells_per_gene: Filter genes with fewer cells
-        normalize_target: Target sum for normalization
     """
     os.makedirs(output_dir, exist_ok=True)
 
     print("Loading data...")
     adata = sc.read_h5ad(input_h5ad)
 
-    print("Filtering and normalizing...")
+    print("Filtering...")
     sc.pp.filter_genes(adata, min_cells=min_cells_per_gene)
-    sc.pp.normalize_total(adata, target_sum=normalize_target)
 
     print("Organizing by patient...")
     X = []
