@@ -195,7 +195,7 @@ def main():
     proportions = pd.read_csv(data_dir / 'proportions.csv', index_col=0)
     states = pd.read_csv(data_dir / 'states.csv', index_col=0)
     communication = pd.read_csv(data_dir / 'communication.csv', index_col=0)
-    labels = pd.read_csv(data_dir / 'labels.csv', index_col=0, squeeze=True)
+    labels = pd.read_csv(data_dir / 'labels.csv', index_col=0).squeeze()
 
     with open(data_dir / 'metadata.json', 'r') as f:
         metadata = json.load(f)
