@@ -320,7 +320,7 @@ def train_gmvae(data_loader, input_dim, n_cell_types, save_path, epochs=100,
 
     # Mixed precision training for speed
     use_amp = device == 'cuda'
-    scaler = torch.cuda.amp.GradScaler() if use_amp else None
+    scaler = torch.amp.GradScaler('cuda') if use_amp else None
     print(f"Mixed precision training (AMP): {use_amp}")
     print()
 
@@ -460,8 +460,8 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', required=True, help='preprocessed data directory')
     parser.add_argument('--output', required=True, help='output model path')
     parser.add_argument('--epochs', type=int, default=30, help='training epochs')
-    parser.add_argument('--batch_size', type=int, default=8192, help='batch size')
-    parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning rate')
+    parser.add_argument('--batch_size', type=int, default=2048, help='batch size (ZINB loss creates K copies)')
+    parser.add_argument('--learning_rate', type=float, default=5e-4, help='learning rate')
     parser.add_argument('--num_workers', type=int, default=4, help='dataloader workers')
 
     args = parser.parse_args()
