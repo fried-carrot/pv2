@@ -317,6 +317,11 @@ def train_gmvae(data_loader, input_dim, n_cell_types, save_path, epochs=100,
     print(f"cell types: {n_cell_types}")
     print(f"mixture components (K): {args.K}")
     print(f"learning rate schedule: warmup {warmup_epochs} epochs, then cosine annealing")
+
+    # Mixed precision training for speed
+    use_amp = device == 'cuda'
+    scaler = torch.cuda.amp.GradScaler() if use_amp else None
+    print(f"Mixed precision training (AMP): {use_amp}")
     print()
 
     model.train()
@@ -335,29 +340,52 @@ def train_gmvae(data_loader, input_dim, n_cell_types, save_path, epochs=100,
 
             optimizer.zero_grad()
 
-            # forward pass
-            pi_x, mu_zs, logvar_zs, z_samples, mu_genz, logvar_genz, x_recons_zerop, x_recons_mean, \
-                x_recons_disper, x_recon_zerop, x_recon_mean, x_recon_disper = model(x, targets)
+            # Mixed precision forward and backward
+            if use_amp:
+                with torch.cuda.amp.autocast():
+                    # forward pass
+                    pi_x, mu_zs, logvar_zs, z_samples, mu_genz, logvar_genz, x_recons_zerop, x_recons_mean, \
+                        x_recons_disper, x_recon_zerop, x_recon_mean, x_recon_disper = model(x, targets)
 
-            # losses (pass epoch for adaptive weighting)
-            total_loss_batch, KLD_gaussian, KLD_pi, zinb_loss = gmvae_losses(
-                x, targets, pi_x, mu_zs, logvar_zs, z_samples, mu_genz, logvar_genz,
-                x_recons_zerop, x_recons_mean, x_recons_disper, epoch=epoch)
+                    # losses (pass epoch for adaptive weighting)
+                    total_loss_batch, KLD_gaussian, KLD_pi, zinb_loss = gmvae_losses(
+                        x, targets, pi_x, mu_zs, logvar_zs, z_samples, mu_genz, logvar_genz,
+                        x_recons_zerop, x_recons_mean, x_recons_disper, epoch=epoch)
 
-            # add contrastive regularization (inspired by Yang et al. 2022)
-            z_embeddings = model.get_embeddings(x)
-            contrast_loss = contrastive_loss(z_embeddings, targets)
+                    # add contrastive regularization (inspired by Yang et al. 2022)
+                    z_embeddings = model.get_embeddings(x)
+                    contrast_loss = contrastive_loss(z_embeddings, targets)
 
-            # total loss with contrastive term (small weight for regularization)
-            total_loss_batch = total_loss_batch + 0.1 * contrast_loss
+                    # total loss with contrastive term (small weight for regularization)
+                    total_loss_batch = total_loss_batch + 0.1 * contrast_loss
 
-            # backward pass
-            total_loss_batch.backward()
+                # backward pass with gradient scaling
+                scaler.scale(total_loss_batch).backward()
+                scaler.unscale_(optimizer)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                # forward pass
+                pi_x, mu_zs, logvar_zs, z_samples, mu_genz, logvar_genz, x_recons_zerop, x_recons_mean, \
+                    x_recons_disper, x_recon_zerop, x_recon_mean, x_recon_disper = model(x, targets)
 
-            # gradient clipping to prevent explosion
-            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                # losses (pass epoch for adaptive weighting)
+                total_loss_batch, KLD_gaussian, KLD_pi, zinb_loss = gmvae_losses(
+                    x, targets, pi_x, mu_zs, logvar_zs, z_samples, mu_genz, logvar_genz,
+                    x_recons_zerop, x_recons_mean, x_recons_disper, epoch=epoch)
 
-            optimizer.step()
+                # add contrastive regularization (inspired by Yang et al. 2022)
+                z_embeddings = model.get_embeddings(x)
+                contrast_loss = contrastive_loss(z_embeddings, targets)
+
+                # total loss with contrastive term (small weight for regularization)
+                total_loss_batch = total_loss_batch + 0.1 * contrast_loss
+
+                # backward pass
+                total_loss_batch.backward()
+                torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+                optimizer.step()
 
             total_loss += total_loss_batch.item()
             total_recon_loss += zinb_loss.item()
@@ -432,8 +460,9 @@ if __name__ == "__main__":
     parser.add_argument('--data_dir', required=True, help='preprocessed data directory')
     parser.add_argument('--output', required=True, help='output model path')
     parser.add_argument('--epochs', type=int, default=30, help='training epochs')
-    parser.add_argument('--batch_size', type=int, default=4096, help='batch size')
-    parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning rate')
+    parser.add_argument('--batch_size', type=int, default=16384, help='batch size (H200 has 141GB VRAM)')
+    parser.add_argument('--learning_rate', type=float, default=2e-3, help='learning rate')
+    parser.add_argument('--num_workers', type=int, default=8, help='dataloader workers')
 
     args = parser.parse_args()
 
@@ -473,7 +502,14 @@ if __name__ == "__main__":
 
     # create data loader with actual labels
     dataset = TensorDataset(X, cell_type_labels)
-    data_loader = DataLoader(dataset, batch_size=args.batch_size, shuffle=True)
+    data_loader = DataLoader(
+        dataset,
+        batch_size=args.batch_size,
+        shuffle=True,
+        num_workers=args.num_workers,
+        pin_memory=True,
+        persistent_workers=True if args.num_workers > 0 else False
+    )
 
     # train GMVAE
     model = train_gmvae(
