@@ -17,7 +17,7 @@ import pandas as pd
 from pathlib import Path
 import argparse
 import json
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import StratifiedKFold, GroupKFold
 from sklearn.metrics import roc_auc_score, f1_score, accuracy_score, precision_score, recall_score
 import sys
 import os
@@ -295,10 +295,14 @@ def main():
     communication = pd.read_csv(data_dir / 'communication.csv', index_col=0)
     labels = pd.read_csv(data_dir / 'labels.csv', index_col=0).squeeze()
 
+    # Load patient mapping for grouped CV
+    patient_mapping = pd.read_csv(data_dir / 'patient_mapping.csv')
+    patient_ids = patient_mapping['patient_id'].values
+
     with open(data_dir / 'metadata.json', 'r') as f:
         metadata = json.load(f)
 
-    print(f"Loaded {len(pseudobulk)} patients")
+    print(f"Loaded {len(pseudobulk)} samples from {len(np.unique(patient_ids))} patients")
     print(f"  Classes: {labels.value_counts().to_dict()}")
 
     # Create full dataset
@@ -306,8 +310,38 @@ def main():
         pseudobulk, proportions, states, communication, labels
     )
 
-    # Stratified K-Fold
-    skf = StratifiedKFold(n_splits=args.n_folds, shuffle=True, random_state=args.seed)
+    # GroupKFold to keep patient samples together
+    # Get patient labels for stratification
+    unique_patients = np.unique(patient_ids)
+    patient_to_label = {}
+    for patient in unique_patients:
+        patient_mask = patient_ids == patient
+        patient_to_label[patient] = labels.iloc[np.where(patient_mask)[0][0]]
+
+    patient_labels = np.array([patient_to_label[p] for p in unique_patients])
+
+    # Use GroupKFold with manual stratification
+    from collections import defaultdict
+    label_groups = defaultdict(list)
+    for idx, patient in enumerate(unique_patients):
+        label_groups[patient_labels[idx]].append(patient)
+
+    # Create balanced folds
+    n_folds = args.n_folds
+    folds = [[] for _ in range(n_folds)]
+
+    np.random.seed(args.seed)
+    for label, patients in label_groups.items():
+        np.random.shuffle(patients)
+        for i, patient in enumerate(patients):
+            folds[i % n_folds].append(patient)
+
+    # Convert patient folds to sample indices
+    fold_splits = []
+    for fold_patients in folds:
+        val_samples = np.where(np.isin(patient_ids, fold_patients))[0]
+        train_samples = np.where(~np.isin(patient_ids, fold_patients))[0]
+        fold_splits.append((train_samples, val_samples))
 
     fold_results = []
     all_predictions = []
@@ -315,14 +349,20 @@ def main():
     all_probabilities = []
 
     print(f"\n{'=' * 80}")
-    print(f"STARTING {args.n_folds}-FOLD CROSS-VALIDATION")
+    print(f"STARTING {args.n_folds}-FOLD GROUPED CROSS-VALIDATION")
+    print(f"(All samples from same patient kept together)")
     print(f"{'=' * 80}")
 
-    for fold_num, (train_idx, val_idx) in enumerate(skf.split(np.arange(len(full_dataset)), full_dataset.labels.numpy()), 1):
+    for fold_num, (train_idx, val_idx) in enumerate(fold_splits, 1):
+        # Count unique patients in this fold
+        train_patients = len(np.unique(patient_ids[train_idx]))
+        val_patients = len(np.unique(patient_ids[val_idx]))
+
         print(f"\n{'=' * 80}")
         print(f"FOLD {fold_num}/{args.n_folds}")
         print(f"{'=' * 80}")
-        print(f"  Train: {len(train_idx)} patients, Val: {len(val_idx)} patients")
+        print(f"  Train: {len(train_idx)} samples ({train_patients} patients)")
+        print(f"  Val: {len(val_idx)} samples ({val_patients} patients)")
 
         # Create data loaders
         train_subset = Subset(full_dataset, train_idx)

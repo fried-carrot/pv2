@@ -398,6 +398,13 @@ def main():
 
     print(f"  Labels: {len(labels)}, Classes: {labels.unique()}")
 
+    # Save patient mapping for grouped CV
+    patient_names = [patients[idx] for idx in sample_to_patient]
+    patient_mapping = pd.DataFrame({
+        'sample_id': pseudobulk.index,
+        'patient_id': patient_names
+    })
+
     # Save
     print("\nSaving outputs...")
     pseudobulk.to_csv(output_dir / 'pseudobulk.csv')
@@ -405,6 +412,7 @@ def main():
     states.to_csv(output_dir / 'states.csv')
     communication.to_csv(output_dir / 'communication.csv')
     labels.to_csv(output_dir / 'labels.csv')
+    patient_mapping.to_csv(output_dir / 'patient_mapping.csv', index=False)
 
     # Save metadata
     metadata = {
@@ -432,6 +440,7 @@ def main():
     print(f"  states.csv: {states.shape}")
     print(f"  communication.csv: {communication.shape}")
     print(f"  labels.csv: {len(labels)}")
+    print(f"  patient_mapping.csv: {len(patient_mapping)} samples")
     print(f"  metadata.json")
 
     print("\n" + "=" * 80)
