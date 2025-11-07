@@ -353,6 +353,10 @@ def train_gmvae(data_loader, input_dim, n_cell_types, save_path, epochs=100,
 
             # backward pass
             total_loss_batch.backward()
+
+            # gradient clipping to prevent explosion
+            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
+
             optimizer.step()
 
             total_loss += total_loss_batch.item()
@@ -429,7 +433,7 @@ if __name__ == "__main__":
     parser.add_argument('--output', required=True, help='output model path')
     parser.add_argument('--epochs', type=int, default=100, help='training epochs')
     parser.add_argument('--batch_size', type=int, default=512, help='batch size')
-    parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning rate')
+    parser.add_argument('--learning_rate', type=float, default=5e-4, help='learning rate')
 
     args = parser.parse_args()
 
