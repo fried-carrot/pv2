@@ -431,9 +431,9 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='train GMVAE-4P')
     parser.add_argument('--data_dir', required=True, help='preprocessed data directory')
     parser.add_argument('--output', required=True, help='output model path')
-    parser.add_argument('--epochs', type=int, default=100, help='training epochs')
-    parser.add_argument('--batch_size', type=int, default=512, help='batch size')
-    parser.add_argument('--learning_rate', type=float, default=5e-4, help='learning rate')
+    parser.add_argument('--epochs', type=int, default=30, help='training epochs')
+    parser.add_argument('--batch_size', type=int, default=4096, help='batch size')
+    parser.add_argument('--learning_rate', type=float, default=1e-3, help='learning rate')
 
     args = parser.parse_args()
 
