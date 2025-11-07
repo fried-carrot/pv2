@@ -120,23 +120,20 @@ def validate(model, dataloader, device):
     with torch.no_grad():
         for batch in dataloader:
             bulk = batch['bulk'].to(device)
-            proportions = batch['proportions'].to(device)
-            states = batch['states'].to(device)
-            communication = batch['communication'].to(device)
             labels = batch['label'].to(device)
 
+            # Validation: NO ground truth modalities, predict from bulk only
             output = model(
                 bulk=bulk,
-                labels=labels,
-                true_proportions=proportions,
-                true_states=states,
-                true_communication=communication,
-                training=True
+                labels=None,
+                true_proportions=None,
+                true_states=None,
+                true_communication=None,
+                training=False
             )
 
             all_logits.append(output['logits'].cpu())
             all_labels.append(labels.cpu())
-            total_loss += output['loss'].item()
 
     logits = torch.cat(all_logits, dim=0)
     labels = torch.cat(all_labels, dim=0)
@@ -157,7 +154,7 @@ def validate(model, dataloader, device):
         roc_auc = roc_auc_score(labels.numpy(), probs.numpy(), multi_class='ovr')
 
     return {
-        'loss': total_loss / len(dataloader),
+        'loss': 0.0,  # No loss during validation (no ground truth modalities)
         'accuracy': accuracy,
         'precision': precision,
         'recall': recall,

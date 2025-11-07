@@ -189,13 +189,13 @@ class MultiModalBulkPredictor(nn.Module):
         self.predict_communication = ModalityPredictor(n_genes, n_interactions)
 
         # Modality encoders (modality → embedding)
-        self.encode_bulk = ModalityEncoder(n_genes, embedding_dim)
+        # NOTE: No bulk encoder - forces model to learn from predicted modalities only
         self.encode_proportions = ModalityEncoder(n_cell_types, embedding_dim)
         self.encode_states = ModalityEncoder(n_cell_types * state_dim, embedding_dim)
         self.encode_communication = ModalityEncoder(n_interactions, embedding_dim)
 
-        # Fusion
-        self.fusion = UncertaintyWeightedFusion(4, embedding_dim)
+        # Fusion (only 3 predicted modalities)
+        self.fusion = UncertaintyWeightedFusion(3, embedding_dim)
 
         # Losses
         self.contrastive_loss = ContrastiveLoss()
@@ -248,13 +248,12 @@ class MultiModalBulkPredictor(nn.Module):
         # Normalize proportions to sum to 1
         props = F.softmax(props, dim=1)
 
-        # Encode all modalities
-        z_bulk = self.encode_bulk(bulk)
+        # Encode predicted modalities only (no bulk encoder)
         z_props = self.encode_proportions(props)
         z_states = self.encode_states(states)
         z_comm = self.encode_communication(comm)
 
-        embeddings = [z_bulk, z_props, z_states, z_comm]
+        embeddings = [z_props, z_states, z_comm]
 
         # Compute losses
         losses = {}
@@ -276,18 +275,14 @@ class MultiModalBulkPredictor(nn.Module):
             # Contrastive loss
             losses['contrastive'] = self.contrastive_loss(embeddings)
 
-        # Uncertainty-weighted fusion
+        # Uncertainty-weighted fusion (only predicted modalities)
         uncertainties = [
             torch.exp(props_logvar),
             torch.exp(states_logvar),
             torch.exp(comm_logvar)
         ]
 
-        # Use predicted modality embeddings (not bulk) for fusion
-        fused_embedding = self.fusion(
-            [z_props, z_states, z_comm],
-            uncertainties
-        )
+        fused_embedding = self.fusion(embeddings, uncertainties)
 
         return {
             'embedding': fused_embedding,
