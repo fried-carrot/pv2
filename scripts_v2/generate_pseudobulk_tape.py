@@ -224,12 +224,19 @@ def compute_cell_states_tape(
     scaler = StandardScaler()
     states = scaler.fit_transform(states)
 
-    sample_names = [f"state_{i}" for i in range(n_samples)]
-    states_df = pd.DataFrame(states, columns=sample_names)
+    # Create feature names: celltype_gene
+    feature_names = []
+    for ct in cell_types:
+        for gene in hvg_genes:
+            feature_names.append(f"{ct}_{gene}")
+
+    # Samples as rows, features as columns
+    sample_names = [f"sample_{i}" for i in range(n_samples)]
+    states_df = pd.DataFrame(states, index=sample_names, columns=feature_names)
 
     print(f"  Cell states: {states_df.shape}")
 
-    return states_df.T
+    return states_df
 
 
 def compute_communication_tape(

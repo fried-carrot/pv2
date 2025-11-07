@@ -235,13 +235,15 @@ def main():
 
     # Initialize model
     print("\nInitializing model...")
+    n_state_features = states.shape[1]
+
     model = MultiModalClassifier(
         n_genes=pseudobulk.shape[1],
         n_cell_types=proportions.shape[1],
         n_interactions=communication.shape[1],
         n_classes=metadata['n_classes'],
         embedding_dim=args.embedding_dim,
-        state_dim=args.state_dim
+        state_dim=n_state_features // proportions.shape[1]  # Per-cell-type dim
     ).to(device)
 
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
