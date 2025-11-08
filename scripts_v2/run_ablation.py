@@ -312,9 +312,12 @@ def train_ablated_model(
         ).to(device)
 
         # Train fold (reuse train_fold from train_multimodal_cv)
+        config_output_dir = output_dir / config_name
+        config_output_dir.mkdir(parents=True, exist_ok=True)
+
         fold_metrics, _ = train_fold(
             model, train_loader, val_loader, device,
-            epochs, lr, fold_num, output_dir / config_name
+            epochs, lr, fold_num, config_output_dir
         )
 
         fold_results.append({
