@@ -255,24 +255,25 @@ def train_small_cohort_experiments(
         subset_labels = labels.iloc[sample_indices]
 
         # Create temporary dataset
-        temp_dir = output_dir / f'temp_{n_patients}_patients'
-        temp_dir.mkdir(parents=True, exist_ok=True)
+        temp_data_dir = output_dir / f'temp_{n_patients}_patients'
+        temp_multimodal_dir = temp_data_dir / 'multimodal'
+        temp_multimodal_dir.mkdir(parents=True, exist_ok=True)
 
-        subset_pseudobulk.to_csv(temp_dir / 'pseudobulk.csv')
-        subset_proportions.to_csv(temp_dir / 'proportions.csv')
-        subset_states.to_csv(temp_dir / 'states.csv')
-        subset_communication.to_csv(temp_dir / 'communication.csv')
-        subset_labels.to_csv(temp_dir / 'labels.csv')
+        subset_pseudobulk.to_csv(temp_multimodal_dir / 'pseudobulk.csv')
+        subset_proportions.to_csv(temp_multimodal_dir / 'proportions.csv')
+        subset_states.to_csv(temp_multimodal_dir / 'states.csv')
+        subset_communication.to_csv(temp_multimodal_dir / 'communication.csv')
+        subset_labels.to_csv(temp_multimodal_dir / 'labels.csv')
 
         subset_patient_mapping = patient_mapping.iloc[sample_indices]
-        subset_patient_mapping.to_csv(temp_dir / 'patient_mapping.csv', index=False)
+        subset_patient_mapping.to_csv(temp_multimodal_dir / 'patient_mapping.csv', index=False)
 
-        with open(temp_dir / 'metadata.json', 'w') as f:
+        with open(temp_multimodal_dir / 'metadata.json', 'w') as f:
             json.dump(metadata, f)
 
         # Train on subset
         subset_result = train_gmvae4p(
-            Path(temp_dir).parent, output_dir, n_folds=5, epochs=epochs,
+            temp_data_dir, output_dir, n_folds=5, epochs=epochs,
             batch_size=batch_size, lr=lr, device=device, seed=seed
         )
 
