@@ -109,6 +109,12 @@ def main():
     labels = pd.read_csv(data_dir / 'multimodal' / 'labels.csv', index_col=0).squeeze()
     patient_mapping = pd.read_csv(data_dir / 'multimodal' / 'patient_mapping.csv')
 
+    # Encode labels to integers
+    from sklearn.preprocessing import LabelEncoder
+    label_encoder = LabelEncoder()
+    labels_encoded = label_encoder.fit_transform(labels)
+    labels = pd.Series(labels_encoded, index=labels.index)
+
     patient_ids = patient_mapping['patient_id'].values
     unique_patients = np.unique(patient_ids)
 
