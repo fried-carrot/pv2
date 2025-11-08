@@ -215,11 +215,16 @@ class AblatedModel(nn.Module):
             )
 
             output['loss'] = total_loss
+
+            # Handle loss components (may be tensor or float)
+            def to_scalar(x):
+                return x.item() if isinstance(x, torch.Tensor) else float(x)
+
             output['loss_components'] = {
                 'classification': loss_cls.item(),
-                'reconstruction': losses.get('reconstruction', torch.tensor(0.0)).item(),
-                'kl': losses.get('kl', torch.tensor(0.0)).item(),
-                'contrastive': losses.get('contrastive', torch.tensor(0.0)).item()
+                'reconstruction': to_scalar(losses.get('reconstruction', 0.0)),
+                'kl': to_scalar(losses.get('kl', 0.0)),
+                'contrastive': to_scalar(losses.get('contrastive', 0.0))
             }
 
         return output
