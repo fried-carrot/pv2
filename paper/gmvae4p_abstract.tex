@@ -11,9 +11,10 @@
 \title{GMVAE4P: Multi-Modal Patient Phenotyping via Gaussian Mixture Variational Autoencoders}
 
 \author{
-Sharat Sakamuri\\
-\textit{Princeton University, Princeton NJ 08544, USA}\\
-\texttt{ssak@princeton.edu}
+Sharat Sakamuri$^{1,2}$\\
+\textit{$^1$Riverside High School, Leesburg, VA 20176, USA}\\
+\textit{$^2$The Academies of Loudoun, Leesburg, VA 20175, USA}\\
+\texttt{1010693@lcps.org}
 }
 
 \date{}
@@ -29,12 +30,6 @@ Tissue complexity is portrayed by the cellular diversity and heterogeneity of pa
 
 Herein, we introduce GMVAE4P, a multi-modal phenotype prediction algorithm based on deep learning frameworks, which generates cellular-resolution phenotype signatures from bulk transcriptomes using existing high-quality scRNA-seq data as references. We hypothesize that the process of bulk RNA-seq aggregation is similar to weighted collection of single-cell expression data in a defined clustering space of cells. Consequently, bulk transcriptome data can be used to infer multi-modal biological information. GMVAE4P first trains a Gaussian Mixture Variational Autoencoder to learn cell-type-specific transcriptional programs within the clustering space. Next, the framework generates three complementary modalities---cell type proportions, gene expression states, and cell-cell communication patterns---from bulk RNA-seq profiles. Finally, a multi-modal classifier integrates these representations through uncertainty-weighted fusion with contrastive alignment to predict patient phenotypes. To ensure computational fairness across method comparisons, we employ FLOP-based benchmarking across all hyperparameter configurations. Taken all, GMVAE4P showed a robust performance across multiple datasets and conditions.
 \end{abstract}
-
-\section*{Availability and Implementation}
-The GMVAE4P framework is available at \url{https://github.com/fried-carrot/pv2}
-
-\section*{Keywords}
-Patient phenotyping, Single-cell RNA-seq, Gaussian Mixture VAE, Multi-modal learning, Bulk RNA-seq, Precision medicine
 
 \bibliographystyle{unsrt}
 \begin{thebibliography}{99}
